@@ -279,8 +279,8 @@ f.qmplpad = ProtoField.bytes("qm.plpad", "Pad")
 function qmi_proto.dissector(buffer, pinfo, tree)
 	-- Set off according to operating system
 	local off
-    local transfer_type = usb_transfer_type().value
-    local endpoint = usb_endpoint().value
+	local transfer_type = usb_transfer_type().value
+	local endpoint = usb_endpoint().value
 	
 	if package.config:sub(1,1) == '\\' then
 		-- USB pcap pseudoheader
@@ -313,7 +313,9 @@ function qmi_proto.dissector(buffer, pinfo, tree)
 			qmhdrtree:add(f.qmhdrpad, buffer(off, 1))
 			qmhdrtree:add(f.qmhdrmuxid, buffer(off + 1, 1))
 			qmhdrtree:add(f.qmhdrpayload, buffer(off + 2, 2))
-			qmtree:add(f.qmpl, buffer(off + 4 , payload_size))
+			if payload_size > 0 then
+				qmtree:add(f.qmpl, buffer(off + 4 , payload_size))
+			end
 
 			if payload_size > 0 and cdbit == 0 then
 				Dissector.get("ip"):call(buffer(off + 4):tvb(), pinfo, tree)
