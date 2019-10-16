@@ -36,31 +36,29 @@ function rndis_data_proto.dissector(buffer, pinfo, tree)
 	--print("\ttransfer_type: " .. transfer_type)
 	--print("\tendpoint: " .. endpoint)
 	
-	if length < 44 then return end
 	if transfer_type == 3 then
-		local rndistree = tree:add(rndis_data_proto, buffer(), "RNDIS")
-		local rndishdrtree = rndistree:add(rndis_data_proto, buffer(0, 44), "Message Header")
-		offset = offset + 44
-		length = length - 44
-		rndishdrtree:add_le(fields.MessageType, buffer(0, 4))
-		rndishdrtree:add_le(fields.MessageLength, buffer(4, 4))
-		rndishdrtree:add_le(fields.DataOffset, buffer(8, 4))
-		local data_offset = buffer(8, 4):le_uint() + 8
-		rndishdrtree:add_le(fields.DataLength, buffer(12, 4))
-		rndishdrtree:add_le(fields.OOBDataOffset, buffer(16, 4))
-		rndishdrtree:add_le(fields.OOBDataLength, buffer(20, 4))
-		rndishdrtree:add_le(fields.NumOOBDataElements, buffer(24, 4))
-		rndishdrtree:add_le(fields.PerPacketInfoOffset, buffer(28, 4))
-		rndishdrtree:add_le(fields.PerPacketInfoLength, buffer(32, 4))
-		rndishdrtree:add_le(fields.VcHandle, buffer(36, 4))
-		rndishdrtree:add_le(fields.Reserved, buffer(40, 4))
-		
-		rndistree:add(fields.Data, buffer(44, length))
-		
-		Dissector.get("eth_withoutfcs"):call(buffer(data_offset):tvb(), pinfo, tree)
-		return
-	elseif transfer_type == 1 then
-		return
+		while length >= 44 do
+			local msg_length = buffer(offset + 4, 4):le_uint()
+			local data_offset = buffer(offset + 8, 4):le_uint() + 8
+			local data_length = buffer(offset + 12, 4):le_uint()
+			local rndistree = tree:add(rndis_data_proto, buffer(offset, 44), "RNDIS Packet Message")
+			rndistree:add_le(fields.MessageType, buffer(offset + 0, 4))
+			rndistree:add_le(fields.MessageLength, buffer(offset + 4, 4))
+			rndistree:add_le(fields.DataOffset, buffer(offset + 8, 4))
+			rndistree:add_le(fields.DataLength, buffer(offset + 12, 4))
+			rndistree:add_le(fields.OOBDataOffset, buffer(offset + 16, 4))
+			rndistree:add_le(fields.OOBDataLength, buffer(offset + 20, 4))
+			rndistree:add_le(fields.NumOOBDataElements, buffer(offset + 24, 4))
+			rndistree:add_le(fields.PerPacketInfoOffset, buffer(offset + 28, 4))
+			rndistree:add_le(fields.PerPacketInfoLength, buffer(offset + 32, 4))
+			rndistree:add_le(fields.VcHandle, buffer(offset + 36, 4))
+			rndistree:add_le(fields.Reserved, buffer(offset + 40, 4))
+
+			Dissector.get("eth_withoutfcs"):call(buffer(offset + data_offset):tvb(), pinfo, tree)
+			
+			length = length - msg_length
+			offset = offset + msg_length
+		end
 	end
 end
 
